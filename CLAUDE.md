@@ -17,8 +17,6 @@ node src/index.js
 # Development with file watching
 npm run dev
 
-# Run automated tests
-node test.js
 ```
 
 ## Architecture
@@ -68,8 +66,6 @@ Uses `chokidar` to watch sandbox files for changes and automatically reload cont
 ## Utilities
 
 - **sandbox-utils.js** - Helper functions for creating common error patterns and formatting
-- **test-utils.js** - Automated testing framework for simulating user interactions
-- **utils.js** - Terminal utilities (cursor control, screen clearing)
 - **constants.js** - Application constants and help text
 
 ## Sandbox File Structure

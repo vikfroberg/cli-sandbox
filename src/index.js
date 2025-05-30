@@ -3,7 +3,6 @@
 import { glob } from "glob";
 import chalk from "chalk";
 import chokidar from "chokidar";
-import { CommandHandler } from "./command-handler.js";
 import { Renderer } from "./renderer.js";
 import { KeyboardHandler } from "./keyboard-handler.js";
 import { DEFAULT_PATTERN, HELP_TEXT } from "./constants.js";
@@ -22,7 +21,6 @@ class CLIPlayground {
     this.isFocusedMode = false;
 
     // Initialize handlers
-    this.commandHandler = new CommandHandler(this);
     this.renderer = new Renderer(this);
     this.keyboardHandler = new KeyboardHandler(this);
   }
@@ -142,7 +140,6 @@ class CLIPlayground {
       process.stdin.setRawMode(false);
     }
 
-    console.log(chalk.gray("\nGoodbye! 👋"));
     process.exit(0);
   }
 }

@@ -146,14 +146,3 @@ export function createStackTrace(error, frames = []) {
     console.error(colors.muted(`  at ${frame}`));
   });
 }
-
-export function addSeparator() {
-  console.error();
-}
-
-export function addDivider() {
-  console.error();
-  console.error(colors.muted("─".repeat(40)));
-  console.error();
-}
-

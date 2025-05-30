@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import path from "node:path";
 import { HELP_TEXT, SANDBOX_SUFFIX } from "./constants.js";
 
 function clearScreen() {
@@ -13,11 +14,12 @@ export class Renderer {
   renderWelcomeScreen() {
     clearScreen();
 
-    console.log(chalk.bold.blue("🎮 CLI Playground"));
+    console.log(chalk.bold("CLI Playground"));
+    console.log();
     console.log(chalk.gray("Select a sandbox to explore:\n"));
 
     this.playground.sandboxFiles.forEach((file, index) => {
-      const fileName = file.split("/").pop().replace(SANDBOX_SUFFIX, "");
+      const fileName = path.relative(process.cwd(), file);
       const isSelected = index === this.playground.selectedSandboxIndex;
 
       const marker = isSelected ? chalk.blue("▶ ") : "  ";
@@ -132,7 +134,7 @@ export class Renderer {
 
   renderSeparator() {
     console.log();
-    console.log(chalk.gray("─".repeat(40)));
+    console.log(chalk.gray("─".repeat(process.stdout.columns)));
     console.log();
   }
 
