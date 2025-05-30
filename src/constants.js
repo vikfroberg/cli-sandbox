@@ -1,0 +1,37 @@
+export const DEFAULT_PATTERN = "**/*_sandbox.mjs";
+export const SANDBOX_SUFFIX = "_sandbox.mjs";
+
+export const HELP_TEXT = {
+  WELCOME: "Navigate: ↑/↓ or Ctrl+K/J  •  Select: Enter  •  Quit: q",
+  SANDBOX:
+    "Navigate: ↑/↓ or Ctrl+K/J  •  Focus: Enter  •  Back: Esc  •  Quit: q  •  Help: h",
+  FOCUSED: "Enter/Esc to exit focus  •  Quit: q  •  Help: h",
+  FULL: `
+Usage: CLI Playground [pattern]
+
+CLI Playground - Interactive visual testing environment for CLI error messages
+and formatting with live reload capabilities
+
+Arguments:
+  pattern                         Glob pattern for sandbox files (default: ${DEFAULT_PATTERN})
+
+Commands:
+  /help                           Show this help
+  /focus [query]                  Focus on specific examples (fuzzy search)
+  /sandboxes                      List all sandbox files
+  /switch <file>                  Switch to a different sandbox
+  /clear                          Clear screen and re-render
+  /exit                           Exit playground
+
+Navigation:
+  ↑/↓ or Ctrl+K/J                 Navigate examples
+  Enter                           Select/focus example
+  Esc                             Back/exit focus
+  q                               Quit application
+  h                               Show help (in sandbox view)
+
+Examples:
+  playground                      Find all ${DEFAULT_PATTERN} files
+  playground "**/*_test.mjs"      Custom pattern
+`,
+};

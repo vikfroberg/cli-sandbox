@@ -28,26 +28,26 @@ node src/index.js
 Create files ending with `_sandbox.mjs` that export arrays of test cases:
 
 ```javascript
-import chalk from 'chalk';
+import chalk from "chalk";
 
 export default [
   {
     name: "Basic Error",
     description: "Simple error with red text",
     render() {
-      console.error(chalk.red('Error: Something went wrong'));
-    }
+      console.error(chalk.red("Error: Something went wrong"));
+    },
   },
-  
+
   {
     name: "Complex Error",
     description: "Error with context and suggestions",
     render() {
-      console.error(chalk.red.bold('Parse Error in config.json'));
+      console.error(chalk.red.bold("Parse Error in config.json"));
       console.error(chalk.gray('  Expected ":" after property name'));
-      console.error(chalk.blue('💡 Check line 3, column 12'));
-    }
-  }
+      console.error(chalk.blue("💡 Check line 3, column 12"));
+    },
+  },
 ];
 ```
 
@@ -89,3 +89,4 @@ playground "**/*_test.mjs"
 - The `render()` function is where you output your error
 - Files are watched for changes - edit and see updates instantly
 - Use `/focus` to isolate specific examples while developing
+
