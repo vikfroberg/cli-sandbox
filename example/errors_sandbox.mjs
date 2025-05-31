@@ -77,5 +77,55 @@ export default [
       ]);
     },
   },
+  {
+    name: "Validation Error with Context",
+    description: "Validation error with file context and line numbers",
+    render() {
+      createValidationError("Validation failed with 1 error:", [
+        "Email is required",
+      ]);
+      console.error();
+      createCodeContext(
+        [
+          "{",
+          '  "name": "my-project",',
+          '  "version" "1.0.0"',
+          '  "dependencies": {',
+        ],
+        3,
+      );
+      console.error();
+      console.error(colors.error('Expected ":" after property name in JSON'));
+    },
+  },
+  {
+    name: "Validation Error with Icon",
+    description: "Validation error with visual indicators",
+    render() {
+      createValidationError("Validation failed with 1 error:", [
+        "Email is required",
+      ]);
+      console.error();
+      console.error(
+        colors.info(
+          `${icons.info} Learn more: https://docs.example.com/migration`,
+        ),
+      );
+    },
+  },
+  {
+    name: "Validation Error with Stack Trace",
+    description: "Validation error with stack trace styling",
+    render() {
+      createValidationError("Validation failed with 1 error:", [
+        "Email is required",
+      ]);
+      console.error();
+      createStackTrace("Failed to parse configuration", [
+        "parseConfig (src/config.js:42:15)",
+        "loadConfig (src/config.js:18:20)",
+        "main (src/index.js:8:5)",
+      ]);
+    },
+  },
 ];
-

@@ -2,9 +2,9 @@ export const DEFAULT_PATTERN = "**/*_sandbox.mjs";
 export const SANDBOX_SUFFIX = "_sandbox.mjs";
 
 export const HELP_TEXT = {
-  WELCOME: "Navigate: ↑/↓ or Ctrl+K/J  •  Select: Enter  •  Quit: q",
+  WELCOME: "Navigate: ↑/↓ or j/k  •  Select: Enter  •  Quit: q",
   SANDBOX:
-    "Navigate: ↑/↓ or Ctrl+K/J  •  Focus: Enter  •  Back: Esc  •  Quit: q  •  Help: h",
+    "Navigate: ↑/↓ or j/k  •  Focus: Enter  •  Back: Esc  •  Quit: q  •  Help: h",
   FOCUSED: "Enter/Esc to exit focus  •  Quit: q  •  Help: h",
   FULL: `
 Usage: CLI Playground [pattern]
@@ -24,7 +24,7 @@ Commands:
   /exit                           Exit playground
 
 Navigation:
-  ↑/↓ or Ctrl+K/J                 Navigate examples
+  ↑/↓ or j/k                      Navigate examples
   Enter                           Select/focus example
   Esc                             Back/exit focus
   q                               Quit application
