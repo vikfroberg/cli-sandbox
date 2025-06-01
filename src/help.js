@@ -1,12 +1,6 @@
-export const DEFAULT_PATTERN = "**/*_sandbox.mjs";
-export const SANDBOX_SUFFIX = "_sandbox.mjs";
+import { DEFAULT_PATTERN } from "./shared.js";
 
-export const HELP_TEXT = {
-  WELCOME: "Navigate: ↑/↓ or j/k  •  Select: Enter  •  Quit: q",
-  SANDBOX:
-    "Navigate: ↑/↓ or j/k  •  Focus: Enter  •  Back: Esc  •  Quit: q  •  Help: h",
-  FOCUSED: "Enter/Esc to exit focus  •  Quit: q  •  Help: h",
-  FULL: `
+const HELP_TEXT = `
 Usage: CLI Playground [pattern]
 
 CLI Playground - Interactive visual testing environment for CLI error messages
@@ -33,5 +27,9 @@ Navigation:
 Examples:
   playground                      Find all ${DEFAULT_PATTERN} files
   playground "**/*_test.mjs"      Custom pattern
-`,
-};
+`;
+
+export function showHelp() {
+  console.log(HELP_TEXT);
+}
+
