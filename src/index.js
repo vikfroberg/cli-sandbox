@@ -15,16 +15,48 @@ async function loadSandboxes(pattern) {
     try {
       const fullPath = path.resolve(file);
       const relativePath = path.relative(process.cwd(), fullPath);
-      sandboxes.push(relativePath);
+
+      // Dynamically import the sandbox file
+      const moduleUrl = `file://${fullPath}`;
+      const module = await import(moduleUrl);
+      const examples = module.default || [];
+
+      sandboxes.push({ path: relativePath, examples });
     } catch (error) {
       console.error(`Failed to load ${file}:`, error.message);
+      // Still add the file with empty examples if it fails to load
+      sandboxes.push({
+        path: path.relative(process.cwd(), path.resolve(file)),
+        examples: [],
+      });
     }
   }
 
   return sandboxes;
 }
 
-function SandboxList({ sandboxes, selectedId }) {
+function SandboxList({
+  sandboxes,
+  onSandboxSelected,
+  selectedSandboxId = null,
+}) {
+  const [maybeSelectedId, setSelectedId] = useState(selectedSandboxId);
+  const selectedId = maybeSelectedId || sandboxes[0];
+
+  useInput((input, key) => {
+    if (input === "j" || key.downArrow) {
+      const currentIndex = sandboxes.indexOf(selectedId);
+      const nextIndex = Math.min(currentIndex + 1, sandboxes.length - 1);
+      setSelectedId(sandboxes[nextIndex]);
+    } else if (input === "k" || key.upArrow) {
+      const currentIndex = sandboxes.indexOf(selectedId);
+      const prevIndex = Math.max(currentIndex - 1, 0);
+      setSelectedId(sandboxes[prevIndex]);
+    } else if (key.return) {
+      onSandboxSelected(selectedId);
+    }
+  });
+
   return h(
     Box,
     { gap: 1, flexDirection: "column" },
@@ -32,7 +64,11 @@ function SandboxList({ sandboxes, selectedId }) {
       Box,
       { flexDirection: "column" },
       h(Text, { bold: true }, "Playground"),
-      h(Text, { color: "gray" }, "Use j/k to navigate, q to quit"),
+      h(
+        Text,
+        { color: "gray" },
+        "Use j/k to navigate, enter to select, q to quit",
+      ),
     ),
     h(
       Box,
@@ -41,7 +77,7 @@ function SandboxList({ sandboxes, selectedId }) {
         const isSelected = sandboxPath === selectedId;
         return h(
           Box,
-          { key: sandboxPath, flexDirection: "row", gap: 1 },
+          { key: `sandbox-${index}`, flexDirection: "row", gap: 1 },
           h(Text, {}, isSelected ? "◉" : "○"),
           h(
             Box,
@@ -54,11 +90,97 @@ function SandboxList({ sandboxes, selectedId }) {
   );
 }
 
+function ExamplesList({
+  sandbox,
+  onExampleSelected,
+  onBack,
+  selectedExampleId = null,
+}) {
+  const [maybeSelectedId, setSelectedId] = useState(selectedExampleId);
+  const examples = sandbox?.examples || [];
+  const selectedId = maybeSelectedId || examples[0]?.name;
+
+  useInput(async (input, key) => {
+    if (input === "j" || key.downArrow) {
+      const currentIndex = examples.findIndex((e) => e.name === selectedId);
+      const nextIndex = Math.min(currentIndex + 1, examples.length - 1);
+      setSelectedId(examples[nextIndex]?.name);
+    } else if (input === "k" || key.upArrow) {
+      const currentIndex = examples.findIndex((e) => e.name === selectedId);
+      const prevIndex = Math.max(currentIndex - 1, 0);
+      setSelectedId(examples[prevIndex]?.name);
+    } else if (input === "-") {
+      onBack();
+    } else if (key.return) {
+      onExampleSelected(selectedId);
+    }
+  });
+  return h(
+    Box,
+    { gap: 1, flexDirection: "column" },
+    h(
+      Box,
+      { flexDirection: "column" },
+      h(Text, { bold: true }, sandbox.path),
+      h(
+        Text,
+        { color: "gray" },
+        "Use j/k to navigate, enter to select, - to go back, q to quit",
+      ),
+    ),
+    h(
+      Box,
+      { flexDirection: "column" },
+      examples.map((example, index) => {
+        const isSelected = example.name === selectedId;
+        return h(
+          Box,
+          { key: `example-${index}`, flexDirection: "row", gap: 1 },
+          h(Text, {}, isSelected ? "◉" : "○"),
+          h(
+            Box,
+            { flexDirection: "column" },
+            h(Text, { bold: isSelected }, example.name),
+            example.description &&
+              h(Text, { color: "gray" }, example.description),
+          ),
+        );
+      }),
+    ),
+  );
+}
+
+function ExampleDetail({ example, onBack }) {
+  useInput(async (input, key) => {
+    if (
+      input === "-" ||
+      input === "j" ||
+      key.downArrow ||
+      input === "k" ||
+      key.upArrow
+    ) {
+      onBack();
+    }
+  });
+
+  return h(
+    Box,
+    { gap: 1, flexDirection: "column" },
+    h(
+      Box,
+      { flexDirection: "column" },
+      h(Text, { bold: true }, example.name),
+      example.description && h(Text, { color: "gray" }, example.description),
+      h(Text, { color: "gray" }, "Press - to go back, q to quit"),
+    ),
+    h(Text, {}, example.value),
+  );
+}
+
 function App({ initialSandboxes, pattern, watch }) {
   const { exit } = useApp();
   const [sandboxes, setSandboxes] = useState(initialSandboxes);
-  const [maybeSelectedId, setSelectedId] = useState(null);
-  const selectedId = maybeSelectedId || sandboxes[0];
+  const [currentScreen, setCurrentScreen] = useState({ type: "sandboxes" });
 
   React.useEffect(() => {
     if (!watch) return;
@@ -71,9 +193,6 @@ function App({ initialSandboxes, pattern, watch }) {
     const reloadSandboxes = async () => {
       const loadedSandboxes = await loadSandboxes(pattern);
       setSandboxes(loadedSandboxes);
-      if (loadedSandboxes.length > 0 && !selectedId) {
-        setSelectedId(loadedSandboxes[0]);
-      }
     };
 
     watcher.on("change", reloadSandboxes);
@@ -87,28 +206,54 @@ function App({ initialSandboxes, pattern, watch }) {
     if (input === "q" || (key.ctrl && input === "c")) {
       exit();
     }
-
-    if (input === "j" || key.downArrow) {
-      const currentIndex = sandboxes.indexOf(selectedId);
-      const nextIndex = Math.min(currentIndex + 1, sandboxes.length - 1);
-      setSelectedId(sandboxes[nextIndex]);
-    } else if (input === "k" || key.upArrow) {
-      const currentIndex = sandboxes.indexOf(selectedId);
-      const prevIndex = Math.max(currentIndex - 1, 0);
-      setSelectedId(sandboxes[prevIndex]);
-    }
   });
 
-  if (sandboxes.length === 0) {
-    return h(
-      Box,
-      { flexDirection: "column" },
-      h(Text, { color: "red" }, "No sandboxes found"),
-      h(Text, { color: "gray" }, `Pattern: ${pattern}`),
-    );
+  switch (currentScreen.type) {
+    case "sandboxes":
+      return h(SandboxList, {
+        sandboxes: sandboxes.map((s) => s.path),
+        selectedSandboxId: currentScreen.selectedSandboxId,
+        onSandboxSelected: (sandboxPath) => {
+          setCurrentScreen({
+            type: "examples",
+            selectedSandboxId: sandboxPath,
+          });
+        },
+      });
+    case "examples":
+      return h(ExamplesList, {
+        selectedExampleId: currentScreen.selectedExampleId,
+        sandbox: sandboxes.find(
+          (sandbox) => sandbox.path === currentScreen.selectedSandboxId,
+        ),
+        onExampleSelected: (exampleId) => {
+          setCurrentScreen({
+            type: "example",
+            selectedSandboxId: currentScreen.selectedSandboxId,
+            selectedExampleId: exampleId,
+          });
+        },
+        onBack: () => {
+          setCurrentScreen({
+            type: "sandboxes",
+            selectedSandboxId: currentScreen.selectedSandboxId,
+          });
+        },
+      });
+    case "example":
+      return h(ExampleDetail, {
+        example: sandboxes
+          .find((s) => s.path === currentScreen.selectedSandboxId)
+          ?.examples.find((e) => e.name === currentScreen.selectedExampleId),
+        onBack: () => {
+          setCurrentScreen({
+            type: "examples",
+            selectedSandboxId: currentScreen.selectedSandboxId,
+            selectedExampleId: currentScreen.selectedExampleId,
+          });
+        },
+      });
   }
-
-  return h(SandboxList, { sandboxes, selectedId });
 }
 
 async function main() {
@@ -121,7 +266,7 @@ async function main() {
   const watch = args.includes("--watch") || args.includes("-w");
   const pattern = args.find((arg) => !arg.startsWith("--")) || DEFAULT_PATTERN;
 
-  process.stdout.write("\x1b[?1049h");
+  process.stdout.write("\x1b[?1049h"); // alternate screen
   clear();
 
   const initialSandboxes = await loadSandboxes(pattern);
