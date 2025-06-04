@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import React, { createElement as h, useState } from "react";
 import { render, Text, Box, useInput, useApp } from "ink";
 import clear from "clear";
