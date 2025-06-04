@@ -4,73 +4,64 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CLI Playground is an interactive visual testing environment for CLI error messages and formatting. The application allows developers to test error messages, colors, and layouts in real-time with live reload capabilities.
+CLI Playground is a simple React/Ink-based application for testing CLI interfaces and components. The current implementation is a basic "Hello, world!" app built with React and Ink for terminal rendering.
 
 ## Key Commands
 
 ```bash
-# Run the playground
+# Run the application
 npm start
 # or
 node src/index.js
 
 # Development with file watching
 npm run dev
-
+# or
+node --watch src/index.js
 ```
 
 ## Architecture
 
-The application follows a modular architecture with clear separation of concerns:
+### Current Structure
 
-### Core Components
+- **src/index.js** - Main application entry point with React/Ink setup
+- **src/help.js** - Help text and usage information (references missing shared.js)
+- **example/** - Contains sandbox files for testing CLI error patterns
 
-- **CLIPlayground** (`src/index.js`) - Main application class that orchestrates the entire system
-- **CommandHandler** (`src/command-handler.js`) - Processes slash commands like `/help`, `/focus`, `/switch`
-- **Renderer** (`src/renderer.js`) - Handles all UI rendering, including welcome screen and example display
-- **KeyboardHandler** (`src/keyboard-handler.js`) - Manages keyboard input and navigation
+### Dependencies
+
+- **React + Ink** - Terminal UI framework
+- **Clear** - Terminal clearing utility
+- **Chalk** - Terminal color styling (used in sandbox utilities)
+- **Chokidar** - File watching capabilities
+- **Fuse.js** - Fuzzy search functionality
+- **Glob** - File pattern matching
 
 ### Sandbox System
 
-The playground discovers and loads sandbox files matching the pattern `*_sandbox.mjs`. Each sandbox file exports an array of test cases with this structure:
+The `example/` directory contains sandbox files demonstrating CLI error patterns:
 
-```javascript
-export default [
-  {
-    name: "Example Name",
-    description: "Example description", 
-    render() {
-      // Output your CLI content here
-    }
-  }
-];
-```
+- **sandbox-utils.js** - Utility functions for creating styled error messages, warnings, and other CLI output patterns
+- **errors_sandbox.mjs** - General error examples
+- **network_sandbox.mjs** - Network-related errors  
+- **validation_sandbox.mjs** - Form and data validation errors
 
-### Navigation States
+The sandbox utilities provide helpers for:
+- Creating styled error messages with icons and colors
+- HTTP error formatting
+- Network error patterns (timeout, DNS, rate-limiting)
+- Validation error display
+- Code context highlighting
+- Stack trace formatting
 
-The application has two main states:
-1. **Welcome Screen** - Hierarchical file browser for selecting sandboxes
-2. **Sandbox View** - Interactive example browser with focus mode capability
+### Current State
 
-### File Watching
+The application appears to be in early development, with a basic React/Ink setup and utility files for CLI error pattern testing. The main application currently only renders "Hello, world!".
 
-Uses `chokidar` to watch sandbox files for changes and automatically reload content. The watcher is set up when a sandbox is selected and torn down when returning to welcome screen.
+## Development Notes
 
-### Key Features
-
-- **Fuzzy Search** - Uses Fuse.js for `/focus` command to find examples by name or description
-- **Live Reload** - Automatic reloading of sandbox files on change
-- **Slash Commands** - Command interface for navigation and control
-- **Focus Mode** - Isolate specific examples for development
-
-## Utilities
-
-- **sandbox-utils.js** - Helper functions for creating common error patterns and formatting
-- **constants.js** - Application constants and help text
-
-## Sandbox File Structure
-
-Existing sandbox files demonstrate different error categories:
-- `errors_sandbox.mjs` - General error examples
-- `network_sandbox.mjs` - Network-related errors  
-- `validation_sandbox.mjs` - Form and data validation errors
+- Uses ES modules (`"type": "module"` in package.json)
+- No build step required - runs directly with Node.js
+- Help system references missing `shared.js` file
+- Includes CLI binary setup for global installation
+- Project dependencies include file watching, fuzzy search, and pattern matching capabilities

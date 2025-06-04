@@ -128,4 +128,100 @@ export default [
       ]);
     },
   },
+
+  {
+    name: "Network Connection Error",
+    description: "Connection timeout with retry suggestion",
+    render() {
+      createError("Network Error: Connection timeout");
+    },
+  },
+
+  {
+    name: "File Not Found Error", 
+    description: "Missing file with helpful suggestions",
+    render() {
+      createError("ENOENT: no such file or directory");
+    },
+  },
+
+  {
+    name: "Permission Denied Error",
+    description: "Access denied with fix instructions", 
+    render() {
+      createError("EACCES: permission denied");
+    },
+  },
+
+  {
+    name: "Database Connection Error",
+    description: "Database connectivity issue",
+    render() {
+      createError("Database Error: Connection refused");
+    },
+  },
+
+  {
+    name: "Memory Limit Exceeded",
+    description: "Out of memory error",
+    render() {
+      createError("JavaScript heap out of memory");
+    },
+  },
+
+  {
+    name: "API Rate Limit Error",
+    description: "Rate limiting with retry information",
+    render() {
+      createError("HTTP 429: Too Many Requests");
+    },
+  },
+
+  {
+    name: "Compilation Error",
+    description: "TypeScript compilation error",
+    render() {
+      createError("TypeScript Error: TS2345");
+    },
+  },
+
+  {
+    name: "Syntax Error",
+    description: "JavaScript syntax error",
+    render() {
+      createError("SyntaxError: Unexpected token ')'");
+    },
+  },
+
+  {
+    name: "Environment Variable Missing",
+    description: "Missing required environment variable",
+    render() {
+      createError("Missing required environment variable: DATABASE_URL");
+    },
+  },
+
+  {
+    name: "Package Not Found",
+    description: "NPM package installation error",
+    render() {
+      createError("Module not found: Cannot resolve 'unknown-package'");
+    },
+  },
+
+  {
+    name: "CORS Error",
+    description: "Cross-origin request blocked",
+    render() {
+      createError("CORS Error: Access blocked by CORS policy");
+    },
+  },
+
+  {
+    name: "Authentication Failed",
+    description: "Invalid credentials",
+    render() {
+      createError("Authentication Error: Invalid username or password");
+    },
+  },
 ];

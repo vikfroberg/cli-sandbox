@@ -1,117 +1,131 @@
-#!/usr/bin/env node
-
-import * as App from "./app.js";
-import { showHelp } from "./help.js";
-import { DEFAULT_PATTERN } from "./shared.js";
+import React, { createElement as h, useState } from "react";
+import { render, Text, Box, useInput, useApp } from "ink";
+import clear from "clear";
 import { glob } from "glob";
+import path from "path";
 import chokidar from "chokidar";
+import { HELP_TEXT } from "./help.js";
+import { DEFAULT_PATTERN } from "./shared.js";
 
-function clearScreen() {
-  process.stdout.write("\x1b[2J\x1b[H");
-}
+async function loadSandboxes(pattern) {
+  const files = await glob(pattern, { cwd: process.cwd() });
+  const sandboxes = [];
 
-// Dependency injection functions
-async function findSandboxFiles(pattern) {
-  return await glob(pattern, {
-    cwd: process.cwd(),
-    absolute: true,
-  });
-}
-
-function createKeyPressSubscription(dispatch) {
-  process.stdin.on("data", (key) => {
-    dispatch({ type: "KeyPress", key });
-  });
-
-  return () => {
-    process.stdin.removeAllListeners("data");
-  };
-}
-
-function createFileWatchSubscription(pattern, handlers, dispatch) {
-  const watcher = chokidar.watch(pattern, {
-    ignored: /node_modules/,
-    persistent: true,
-    ignoreInitial: true,
-  });
-
-  if (handlers.change) {
-    watcher.on("change", (file) => handlers.change(file));
-  }
-  if (handlers.add) {
-    watcher.on("add", (files) => handlers.add(files));
+  for (const file of files) {
+    try {
+      const fullPath = path.resolve(file);
+      const relativePath = path.relative(process.cwd(), fullPath);
+      sandboxes.push(relativePath);
+    } catch (error) {
+      console.error(`Failed to load ${file}:`, error.message);
+    }
   }
 
-  return () => watcher.close();
+  return sandboxes;
+}
+
+function SandboxList({ sandboxes, selectedId }) {
+  return h(
+    Box,
+    { gap: 1, flexDirection: "column" },
+    h(
+      Box,
+      { flexDirection: "column" },
+      h(Text, { bold: true }, "Playground"),
+      h(Text, { color: "gray" }, "Use j/k to navigate, q to quit"),
+    ),
+    h(
+      Box,
+      { flexDirection: "column" },
+      sandboxes.map((sandboxPath, index) => {
+        const isSelected = sandboxPath === selectedId;
+        return h(
+          Box,
+          { key: sandboxPath, flexDirection: "row", gap: 1 },
+          h(Text, {}, isSelected ? "◉" : "○"),
+          h(
+            Box,
+            { flexDirection: "column" },
+            h(Text, { bold: isSelected }, sandboxPath),
+          ),
+        );
+      }),
+    ),
+  );
+}
+
+function App({ initialSandboxes, pattern, watch }) {
+  const { exit } = useApp();
+  const [sandboxes, setSandboxes] = useState(initialSandboxes);
+  const [maybeSelectedId, setSelectedId] = useState(null);
+  const selectedId = maybeSelectedId || sandboxes[0];
+
+  React.useEffect(() => {
+    if (!watch) return;
+
+    const watcher = chokidar.watch(pattern, {
+      ignoreInitial: true,
+      cwd: process.cwd(),
+    });
+
+    const reloadSandboxes = async () => {
+      const loadedSandboxes = await loadSandboxes(pattern);
+      setSandboxes(loadedSandboxes);
+      if (loadedSandboxes.length > 0 && !selectedId) {
+        setSelectedId(loadedSandboxes[0]);
+      }
+    };
+
+    watcher.on("change", reloadSandboxes);
+    watcher.on("add", reloadSandboxes);
+    watcher.on("unlink", reloadSandboxes);
+
+    return () => watcher.close();
+  }, [pattern, watch]);
+
+  useInput(async (input, key) => {
+    if (input === "q" || (key.ctrl && input === "c")) {
+      exit();
+    }
+
+    if (input === "j" || key.downArrow) {
+      const currentIndex = sandboxes.indexOf(selectedId);
+      const nextIndex = Math.min(currentIndex + 1, sandboxes.length - 1);
+      setSelectedId(sandboxes[nextIndex]);
+    } else if (input === "k" || key.upArrow) {
+      const currentIndex = sandboxes.indexOf(selectedId);
+      const prevIndex = Math.max(currentIndex - 1, 0);
+      setSelectedId(sandboxes[prevIndex]);
+    }
+  });
+
+  if (sandboxes.length === 0) {
+    return h(
+      Box,
+      { flexDirection: "column" },
+      h(Text, { color: "red" }, "No sandboxes found"),
+      h(Text, { color: "gray" }, `Pattern: ${pattern}`),
+    );
+  }
+
+  return h(SandboxList, { sandboxes, selectedId });
 }
 
 async function main() {
   const args = process.argv.slice(2);
 
   if (args.includes("--help") || args.includes("-h")) {
-    showHelp();
-    return;
+    return console.log(HELP_TEXT);
   }
 
-  const pattern = args[0] || DEFAULT_PATTERN;
+  const watch = args.includes("--watch") || args.includes("-w");
+  const pattern = args.find((arg) => !arg.startsWith("--")) || DEFAULT_PATTERN;
 
-  // TEA architecture setup
-  let currentModel = await App.init(pattern, { findSandboxFiles });
-  let activeSubscriptions = [];
+  process.stdout.write("\x1b[?1049h");
+  clear();
 
-  function dispatch(msg) {
-    const newModel = App.update(msg, currentModel);
-    currentModel = newModel;
-
-    // Clean up old subscriptions
-    activeSubscriptions.forEach((cleanup) => cleanup());
-    activeSubscriptions = [];
-
-    // Setup new subscriptions based on new model
-    const newSubs = App.subscriptions(
-      currentModel,
-      {
-        keyPress: createKeyPressSubscription,
-        watchFiles: createFileWatchSubscription,
-      },
-      dispatch,
-    );
-
-    activeSubscriptions = newSubs;
-
-    // Re-render
-    clearScreen();
-    App.render(currentModel, dispatch);
-  }
-
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-  }
-  process.stdin.resume();
-  process.stdin.setEncoding("utf8");
-
-  // Initial render and subscriptions
-  clearScreen();
-  App.render(currentModel, dispatch);
-
-  const initialSubs = App.subscriptions(
-    currentModel,
-    {
-      keyPress: createKeyPressSubscription,
-      watchFiles: createFileWatchSubscription,
-    },
-    dispatch,
-  );
-
-  activeSubscriptions = initialSubs;
-
-  process.on("SIGINT", () => {
-    activeSubscriptions.forEach((cleanup) => cleanup());
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(false);
-    }
-    process.exit(0);
-  });
+  const initialSandboxes = await loadSandboxes(pattern);
+  render(h(App, { pattern, watch, initialSandboxes }));
 }
 
 main();
