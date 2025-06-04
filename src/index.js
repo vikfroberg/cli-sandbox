@@ -65,7 +65,7 @@ function SandboxList({
     h(
       Box,
       { flexDirection: "column" },
-      h(Text, { bold: true }, "Playground"),
+      h(Text, { bold: true }, "Sandboxes"),
       h(
         Text,
         { color: "gray" },

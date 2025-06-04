@@ -1,11 +1,11 @@
 {
-  "name": "cli-playground",
+  "name": "cli-sandbox",
   "version": "1.0.0",
-  "description": "Visual CLI error testing playground",
+  "description": "Visual testing for your CLI",
   "type": "module",
   "main": "src/index.js",
   "bin": {
-    "playground": "./src/index.js"
+    "sandbox": "src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",
@@ -32,7 +32,6 @@
     "cli",
     "testing",
     "errors",
-    "playground",
     "terminal",
     "ink",
     "react"
@@ -41,10 +40,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vikfroberg/cli-playground.git"
+    "url": "git+https://github.com/vikfroberg/cli-sandbox.git"
   },
-  "homepage": "https://github.com/vikfroberg/cli-playground#readme",
+  "homepage": "https://github.com/vikfroberg/cli-sandbox#readme",
   "bugs": {
-    "url": "https://github.com/vikfroberg/cli-playground/issues"
+    "url": "https://github.com/vikfroberg/cli-sandbox/issues"
   }
 }
