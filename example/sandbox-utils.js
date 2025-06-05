@@ -5,7 +5,7 @@ export const icons = {
   warning: "⚠",
   info: "ℹ",
   success: "✓",
-  suggestion: "⭐",
+  suggestion: "💡",
   time: "⏱",
 };
 

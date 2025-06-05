@@ -8,7 +8,7 @@
     "sandbox": "src/index.js"
   },
   "scripts": {
-    "start": "node --import hot-hook/register src/index.js",
+    "start": "node src/index.js",
     "dev": "node --watch src/index.js"
   },
   "engines": {
@@ -23,6 +23,7 @@
     "chokidar": "^3.6.0",
     "clear": "^0.1.0",
     "dependency-tree": "^11.1.1",
+    "esbuild": "^0.25.5",
     "fuse.js": "^7.0.0",
     "glob": "^10.3.10",
     "hot-esm": "^1.6.0",

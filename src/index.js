@@ -5,28 +5,123 @@ import { glob } from "glob";
 import path from "path";
 import { HELP_TEXT } from "./help.js";
 import { DEFAULT_PATTERN } from "./shared.js";
-import dependencyTree from "dependency-tree";
 import chokidar from "chokidar";
+import * as esbuild from "esbuild";
+import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+class SandboxLoader {
+  constructor() {
+    this.tempDir = path.join(__dirname, ".temp-bundles");
+    this.bundleCounter = 0;
+    this.ensureTempDir();
+  }
+
+  ensureTempDir() {
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
+    }
+  }
+
+  async bundleSandbox(filePath) {
+    try {
+      const bundleId = ++this.bundleCounter;
+      const outputPath = path.join(this.tempDir, `bundle-${bundleId}.js`);
+
+      // Bundle the file and all its dependencies
+      const result = await esbuild.build({
+        entryPoints: [filePath],
+        bundle: true,
+        format: "esm",
+        platform: "node",
+        target: "node18",
+        outfile: outputPath,
+        write: true,
+        external: ["react", "ink"], // Don't bundle these
+        metafile: true,
+        sourcemap: false,
+        minify: false,
+        keepNames: true,
+      });
+
+      // Extract all dependencies from metafile for watching
+      const dependencies = [];
+      if (result.metafile) {
+        for (const inputPath of Object.keys(result.metafile.inputs)) {
+          const resolvedPath = path.resolve(inputPath);
+          if (!resolvedPath.includes("node_modules")) {
+            dependencies.push(resolvedPath);
+          }
+        }
+      }
+
+      return { outputPath, dependencies };
+    } catch (error) {
+      console.error(`ESBuild bundling failed for ${filePath}:`, error);
+      throw error;
+    }
+  }
+
+  async loadSandbox(file) {
+    try {
+      const fullPath = path.resolve(file);
+      const relativePath = path.relative(process.cwd(), fullPath);
+
+      // Bundle the sandbox file
+      const bundleResult = await this.bundleSandbox(fullPath);
+
+      // Import the bundled version
+      const moduleUrl = `file://${bundleResult.outputPath}`;
+      const module = await import(moduleUrl);
+      const examples = module.default || [];
+
+      return {
+        absolutePath: fullPath,
+        path: relativePath,
+        examples,
+        bundlePath: bundleResult.outputPath,
+        dependencies: bundleResult.dependencies, // Include dependencies for watching
+      };
+    } catch (error) {
+      console.error(`Failed to load ${file}:`, error.message);
+      return {
+        path: path.relative(process.cwd(), path.resolve(file)),
+        examples: [],
+        bundlePath: null,
+        dependencies: [],
+      };
+    }
+  }
+
+  cleanup() {
+    // Clean up old bundle files
+    try {
+      if (fs.existsSync(this.tempDir)) {
+        const files = fs.readdirSync(this.tempDir);
+        for (const file of files) {
+          fs.unlinkSync(path.join(this.tempDir, file));
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to cleanup temp files:", error.message);
+    }
+  }
+}
+
+// Global loader instance
+const sandboxLoader = new SandboxLoader();
+
+// Cleanup on exit
+process.on("exit", () => sandboxLoader.cleanup());
+process.on("SIGINT", () => {
+  sandboxLoader.cleanup();
+  process.exit();
+});
 
 async function loadSandbox(file) {
-  try {
-    const fullPath = path.resolve(file);
-    const relativePath = path.relative(process.cwd(), fullPath);
-
-    // Dynamically import the sandbox file with cache busting
-    const moduleUrl = `file://${fullPath}?t=${Date.now()}`;
-    const module = await import(moduleUrl);
-    const examples = module.default || [];
-
-    return { absolutePath: fullPath, path: relativePath, examples };
-  } catch (error) {
-    console.error(`Failed to load ${file}:`, error.message);
-    // Still add the file with empty examples if it fails to load
-    return {
-      path: path.relative(process.cwd(), path.resolve(file)),
-      examples: [],
-    };
-  }
+  return sandboxLoader.loadSandbox(file);
 }
 
 async function loadSandboxes(pattern) {
@@ -165,33 +260,18 @@ function ExampleDetail({
   onBack,
 }) {
   const example = sandbox?.examples.find((e) => e.name === exampleId);
-  useEffect(() => {
-    if (watch) {
-      let deps = dependencyTree.toList({
-        filename: sandbox.absolutePath,
-        directory: path.dirname(sandbox.absolutePath),
-        filter: (path) => path.indexOf("node_modules") === -1,
-      });
 
-      let watcher = chokidar.watch(deps, {
+  useEffect(() => {
+    if (watch && sandbox?.dependencies) {
+      // Watch all dependencies discovered by esbuild
+      let watcher = chokidar.watch(sandbox.dependencies, {
         ignoreInitial: true,
       });
 
-      function exampleChanged() {
+      async function exampleChanged() {
         watcher.close();
-        let newDeps = dependencyTree.toList({
-          filename: sandbox.absolutePath,
-          directory: path.dirname(sandbox.absolutePath),
-          filter: (path) => path.indexOf("node_modules") === -1,
-        });
-        watcher = chokidar.watch(newDeps, {
-          ignoreInitial: true,
-        });
 
-        watcher.on("change", exampleChanged);
-        watcher.on("add", exampleChanged);
-        watcher.on("unlink", exampleChanged);
-
+        // Trigger reload with fresh bundle
         onExampleChanged();
       }
 
@@ -201,7 +281,7 @@ function ExampleDetail({
 
       return () => watcher.close();
     }
-  }, []);
+  }, [watch, sandbox?.dependencies, onExampleChanged]);
 
   useInput(async (input, key) => {
     if (
@@ -289,15 +369,14 @@ function App({ initialSandboxes, pattern, watch }) {
         sandbox,
         exampleId: currentScreen.selectedExampleId,
         watch,
-        onExampleChanged: () => {
-          console.log("onExampleChanged");
-          loadSandbox(sandbox.absolutePath).then((sandbox) => {
-            setSandboxes(
-              sandboxes.map((s) =>
-                s.path === currentScreen.selectedSandboxId ? sandbox : s,
-              ),
-            );
-          });
+        onExampleChanged: async () => {
+          // Create a fresh bundle when files change
+          const reloadedSandbox = await loadSandbox(sandbox.absolutePath);
+          setSandboxes(
+            sandboxes.map((s) =>
+              s.path === currentScreen.selectedSandboxId ? reloadedSandbox : s,
+            ),
+          );
         },
         onBack: () => {
           setCurrentScreen({
@@ -328,4 +407,4 @@ async function main() {
   render(h(App, { pattern, watch, initialSandboxes }));
 }
 
-main();
+main().catch(console.error);
