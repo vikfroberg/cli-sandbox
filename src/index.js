@@ -1,37 +1,41 @@
-#!/usr/bin/env node
-
-import React, { createElement as h, useState } from "react";
+import React, { createElement as h, useState, useEffect } from "react";
 import { render, Text, Box, useInput, useApp } from "ink";
 import clear from "clear";
 import { glob } from "glob";
 import path from "path";
-import chokidar from "chokidar";
 import { HELP_TEXT } from "./help.js";
 import { DEFAULT_PATTERN } from "./shared.js";
+import dependencyTree from "dependency-tree";
+import chokidar from "chokidar";
+
+async function loadSandbox(file) {
+  try {
+    const fullPath = path.resolve(file);
+    const relativePath = path.relative(process.cwd(), fullPath);
+
+    // Dynamically import the sandbox file with cache busting
+    const moduleUrl = `file://${fullPath}?t=${Date.now()}`;
+    const module = await import(moduleUrl);
+    const examples = module.default || [];
+
+    return { absolutePath: fullPath, path: relativePath, examples };
+  } catch (error) {
+    console.error(`Failed to load ${file}:`, error.message);
+    // Still add the file with empty examples if it fails to load
+    return {
+      path: path.relative(process.cwd(), path.resolve(file)),
+      examples: [],
+    };
+  }
+}
 
 async function loadSandboxes(pattern) {
   const files = await glob(pattern, { cwd: process.cwd() });
   const sandboxes = [];
 
   for (const file of files) {
-    try {
-      const fullPath = path.resolve(file);
-      const relativePath = path.relative(process.cwd(), fullPath);
-
-      // Dynamically import the sandbox file
-      const moduleUrl = `file://${fullPath}`;
-      const module = await import(moduleUrl);
-      const examples = module.default || [];
-
-      sandboxes.push({ path: relativePath, examples });
-    } catch (error) {
-      console.error(`Failed to load ${file}:`, error.message);
-      // Still add the file with empty examples if it fails to load
-      sandboxes.push({
-        path: path.relative(process.cwd(), path.resolve(file)),
-        examples: [],
-      });
-    }
+    const sandbox = await loadSandbox(file);
+    sandboxes.push(sandbox);
   }
 
   return sandboxes;
@@ -39,6 +43,7 @@ async function loadSandboxes(pattern) {
 
 function SandboxList({
   sandboxes,
+  watch = false,
   onSandboxSelected,
   selectedSandboxId = null,
 }) {
@@ -65,7 +70,7 @@ function SandboxList({
     h(
       Box,
       { flexDirection: "column" },
-      h(Text, { bold: true }, "Sandboxes"),
+      h(Text, { bold: true }, `Sandboxes${watch ? " (watching)" : ""}`),
       h(
         Text,
         { color: "gray" },
@@ -152,7 +157,52 @@ function ExamplesList({
   );
 }
 
-function ExampleDetail({ example, onBack }) {
+function ExampleDetail({
+  sandbox,
+  exampleId,
+  watch,
+  onExampleChanged,
+  onBack,
+}) {
+  const example = sandbox?.examples.find((e) => e.name === exampleId);
+  useEffect(() => {
+    if (watch) {
+      let deps = dependencyTree.toList({
+        filename: sandbox.absolutePath,
+        directory: path.dirname(sandbox.absolutePath),
+        filter: (path) => path.indexOf("node_modules") === -1,
+      });
+
+      let watcher = chokidar.watch(deps, {
+        ignoreInitial: true,
+      });
+
+      function exampleChanged() {
+        watcher.close();
+        let newDeps = dependencyTree.toList({
+          filename: sandbox.absolutePath,
+          directory: path.dirname(sandbox.absolutePath),
+          filter: (path) => path.indexOf("node_modules") === -1,
+        });
+        watcher = chokidar.watch(newDeps, {
+          ignoreInitial: true,
+        });
+
+        watcher.on("change", exampleChanged);
+        watcher.on("add", exampleChanged);
+        watcher.on("unlink", exampleChanged);
+
+        onExampleChanged();
+      }
+
+      watcher.on("change", exampleChanged);
+      watcher.on("add", exampleChanged);
+      watcher.on("unlink", exampleChanged);
+
+      return () => watcher.close();
+    }
+  }, []);
+
   useInput(async (input, key) => {
     if (
       input === "-" ||
@@ -184,25 +234,13 @@ function App({ initialSandboxes, pattern, watch }) {
   const [sandboxes, setSandboxes] = useState(initialSandboxes);
   const [currentScreen, setCurrentScreen] = useState({ type: "sandboxes" });
 
-  React.useEffect(() => {
-    if (!watch) return;
-
-    const watcher = chokidar.watch(pattern, {
-      ignoreInitial: true,
-      cwd: process.cwd(),
-    });
-
-    const reloadSandboxes = async () => {
+  useEffect(() => {
+    async function reloadSandboxes() {
       const loadedSandboxes = await loadSandboxes(pattern);
       setSandboxes(loadedSandboxes);
-    };
-
-    watcher.on("change", reloadSandboxes);
-    watcher.on("add", reloadSandboxes);
-    watcher.on("unlink", reloadSandboxes);
-
-    return () => watcher.close();
-  }, [pattern, watch]);
+    }
+    reloadSandboxes();
+  }, [pattern, watch, currentScreen]);
 
   useInput(async (input, key) => {
     if (input === "q" || (key.ctrl && input === "c")) {
@@ -213,6 +251,7 @@ function App({ initialSandboxes, pattern, watch }) {
   switch (currentScreen.type) {
     case "sandboxes":
       return h(SandboxList, {
+        watch,
         sandboxes: sandboxes.map((s) => s.path),
         selectedSandboxId: currentScreen.selectedSandboxId,
         onSandboxSelected: (sandboxPath) => {
@@ -242,11 +281,24 @@ function App({ initialSandboxes, pattern, watch }) {
           });
         },
       });
-    case "example":
+    case "example": {
+      let sandbox = sandboxes.find(
+        (s) => s.path === currentScreen.selectedSandboxId,
+      );
       return h(ExampleDetail, {
-        example: sandboxes
-          .find((s) => s.path === currentScreen.selectedSandboxId)
-          ?.examples.find((e) => e.name === currentScreen.selectedExampleId),
+        sandbox,
+        exampleId: currentScreen.selectedExampleId,
+        watch,
+        onExampleChanged: () => {
+          console.log("onExampleChanged");
+          loadSandbox(sandbox.absolutePath).then((sandbox) => {
+            setSandboxes(
+              sandboxes.map((s) =>
+                s.path === currentScreen.selectedSandboxId ? sandbox : s,
+              ),
+            );
+          });
+        },
         onBack: () => {
           setCurrentScreen({
             type: "examples",
@@ -255,6 +307,7 @@ function App({ initialSandboxes, pattern, watch }) {
           });
         },
       });
+    }
   }
 }
 

@@ -1,101 +1,12 @@
-import chalk from "chalk";
-
-const icons = {
-  error: "✖",
-  warning: "⚠",
-  info: "ℹ",
-  success: "✓",
-  suggestion: "💡",
-  time: "⏱",
-};
-
-const colors = {
-  error: chalk.red,
-  errorBold: chalk.red.bold,
-  warning: chalk.yellow,
-  info: chalk.blue,
-  success: chalk.green,
-  muted: chalk.gray,
-  highlight: chalk.cyan,
-  white: chalk.white,
-};
-
-function createError(title, details = []) {
-  let output = colors.errorBold(`${icons.error} ${title}`);
-  if (details.length > 0) {
-    output += '\n\n';
-    details.forEach((detail) => {
-      if (typeof detail === "string") {
-        output += colors.muted(`  ${detail}`) + '\n';
-      } else if (detail.type === "code") {
-        output += colors.highlight(`  ${detail.content}`) + '\n';
-      } else if (detail.type === "suggestion") {
-        output += colors.info(`${icons.suggestion} ${detail.content}`) + '\n';
-      }
-    });
-  }
-  return output;
-}
-
-function createWarning(title, details = []) {
-  let output = colors.warning(`${icons.warning} ${title}`);
-  if (details.length > 0) {
-    output += '\n\n';
-    details.forEach((detail) => {
-      output += colors.muted(`  ${detail}`) + '\n';
-    });
-  }
-  return output;
-}
-
-function createValidationError(title, errors = [], suggestions = []) {
-  let output = colors.errorBold(title) + '\n\n';
-
-  if (errors.length > 0) {
-    errors.forEach((error) => {
-      if (typeof error === "object") {
-        output += colors.error(`  ${error.field}`) + ' ' + colors.muted("→") + ' ' + colors.error(error.message) + '\n';
-      } else {
-        output += colors.error(`• ${error}`) + '\n';
-      }
-    });
-  }
-
-  if (suggestions.length > 0) {
-    output += '\n';
-    output += colors.info(`${icons.suggestion} Example valid values:`) + '\n';
-    suggestions.forEach((suggestion) => {
-      output += colors.success(`  ${suggestion}`) + '\n';
-    });
-  }
-  return output;
-}
-
-function createCodeContext(lines, errorLine) {
-  let output = '';
-  lines.forEach((line, index) => {
-    const lineNum = index + 1;
-    const prefix = `  ${lineNum} | `;
-
-    if (lineNum === errorLine) {
-      output += colors.error(`${prefix}${line}`) + '\n';
-      if (line.includes("^")) {
-        output += colors.error(`    |${" ".repeat(line.indexOf("^"))}^`) + '\n';
-      }
-    } else {
-      output += colors.muted(`${prefix}${line}`) + '\n';
-    }
-  });
-  return output;
-}
-
-function createStackTrace(error, frames = []) {
-  let output = colors.errorBold(`Error: ${error}`) + '\n';
-  frames.forEach((frame) => {
-    output += colors.muted(`  at ${frame}`) + '\n';
-  });
-  return output;
-}
+import { 
+  createError, 
+  createWarning, 
+  createValidationError, 
+  createCodeContext, 
+  createStackTrace,
+  colors,
+  icons 
+} from "./sandbox-utils.js";
 
 export default [
   {
@@ -119,7 +30,7 @@ export default [
     description: "Error with file context and line numbers",
     value: (() => {
       let output = createError("Parse Error in config.json");
-      output += '\n\n';
+      output += "\n\n";
       output += createCodeContext(
         [
           "{",
@@ -129,7 +40,7 @@ export default [
         ],
         3,
       );
-      output += '\n';
+      output += "\n";
       output += colors.error('Expected ":" after property name in JSON');
       return output;
     })(),
@@ -143,7 +54,7 @@ export default [
         "Function fetchData() is deprecated",
         "Use fetchDataAsync() instead",
       ]);
-      output += '\n';
+      output += "\n";
       output += colors.info(
         `${icons.info} Learn more: https://docs.example.com/migration`,
       );
@@ -167,7 +78,7 @@ export default [
       let output = createValidationError("Validation failed with 1 error:", [
         "Email is required",
       ]);
-      output += '\n';
+      output += "\n";
       output += createCodeContext(
         [
           "{",
@@ -177,7 +88,7 @@ export default [
         ],
         3,
       );
-      output += '\n';
+      output += "\n";
       output += colors.error('Expected ":" after property name in JSON');
       return output;
     })(),
@@ -189,7 +100,7 @@ export default [
       let output = createValidationError("Validation failed with 1 error:", [
         "Email is required",
       ]);
-      output += '\n';
+      output += "\n";
       output += colors.info(
         `${icons.info} Learn more: https://docs.example.com/migration`,
       );
@@ -203,7 +114,7 @@ export default [
       let output = createValidationError("Validation failed with 1 error:", [
         "Email is required",
       ]);
-      output += '\n';
+      output += "\n";
       output += createStackTrace("Failed to parse configuration", [
         "parseConfig (src/config.js:42:15)",
         "loadConfig (src/config.js:18:20)",
@@ -220,14 +131,14 @@ export default [
   },
 
   {
-    name: "File Not Found Error", 
+    name: "File Not Found Error",
     description: "Missing file with helpful suggestions",
     value: createError("ENOENT: no such file or directory"),
   },
 
   {
     name: "Permission Denied Error",
-    description: "Access denied with fix instructions", 
+    description: "Access denied with fix instructions",
     value: createError("EACCES: permission denied"),
   },
 

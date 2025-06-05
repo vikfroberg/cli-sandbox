@@ -1,69 +1,9 @@
-import chalk from "chalk";
-
-const icons = {
-  error: "✖",
-  warning: "⚠",
-  info: "ℹ",
-  success: "✓",
-  suggestion: "💡",
-  time: "⏱",
-};
-
-const colors = {
-  error: chalk.red,
-  errorBold: chalk.red.bold,
-  warning: chalk.yellow,
-  info: chalk.blue,
-  success: chalk.green,
-  muted: chalk.gray,
-  highlight: chalk.cyan,
-  white: chalk.white,
-};
-
-function createHttpError(method, url, status, statusText, response = null) {
-  let output = colors.errorBold(`HTTP ${status} ${statusText}`) + '\n\n';
-  output += colors.muted("Request:") + '\n';
-  output += colors.info(`  ${method} ${url}`) + '\n';
-
-  if (response) {
-    output += colors.muted("Response:") + '\n';
-    output += colors.error(`  ${response}`) + '\n';
-  }
-  return output;
-}
-
-function createNetworkError(type, details = {}) {
-  const { host, timeout, message } = details;
-  let output = '';
-
-  switch (type) {
-    case "timeout":
-      output += colors.error(`${icons.error} Connection timeout`) + '\n';
-      if (host) output += colors.muted(`  Failed to connect to ${host}`) + '\n';
-      if (timeout)
-        output += colors.muted(`  Timeout after ${timeout} seconds`) + '\n';
-      break;
-
-    case "dns":
-      output += colors.error(`${icons.error} DNS lookup failed`) + '\n';
-      if (host)
-        output += colors.muted(`  Could not resolve hostname: ${host}`) + '\n';
-      break;
-
-    case "rate-limit":
-      output += colors.warning(`${icons.time} Rate limit exceeded`) + '\n';
-      if (details.limit)
-        output += colors.muted(`  API limit: ${details.limit}`) + '\n';
-      if (details.used) output += colors.muted(`  Used: ${details.used}`) + '\n';
-      if (details.resets)
-        output += colors.muted(`  Resets: ${details.resets}`) + '\n';
-      break;
-
-    default:
-      output += colors.error(`${icons.error} ${message || "Network error"}`) + '\n';
-  }
-  return output;
-}
+import { 
+  createHttpError, 
+  createNetworkError,
+  colors,
+  icons 
+} from "./sandbox-utils.js";
 
 export default [
   {
