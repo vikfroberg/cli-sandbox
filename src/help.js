@@ -1,6 +1,5 @@
-import { DEFAULT_PATTERN } from "./shared.js";
-
-export const HELP_TEXT = `
+export default function help(pattern) {
+  return `
 Usage: sandbox [pattern]
 
 Sandbox - interactive visual testing environment for CLI rendering
@@ -13,6 +12,7 @@ Options:
   -w, --watch                    Watch files for changes
 
 Examples:
-  sandbox                      Find all ${DEFAULT_PATTERN} files
+  sandbox                      Find all ${pattern} files
   sandbox "**/*_test.mjs"      Custom pattern
 `.trim();
+}
