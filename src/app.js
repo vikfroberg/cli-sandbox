@@ -78,7 +78,7 @@ function ExamplesList({
       const currentIndex = examples.findIndex((e) => e.name === selectedId);
       const prevIndex = Math.max(currentIndex - 1, 0);
       setSelectedId(examples[prevIndex]?.name);
-    } else if (input === "-") {
+    } else if (input === "-" || key.escape) {
       onBack();
     } else if (key.return) {
       onExampleSelected(selectedId);
@@ -121,11 +121,12 @@ function ExamplesList({
 
 function ExampleDetail({
   sandbox,
-  exampleId,
+  exampleId: initialExampleId,
   watch,
   onExampleChanged,
   onBack,
 }) {
+  const [exampleId, setExampleId] = useState(initialExampleId);
   const example = sandbox?.examples.find((e) => e.name === exampleId);
 
   useEffect(() => {
@@ -150,14 +151,26 @@ function ExampleDetail({
   }, [watch, sandbox?.dependencies, onExampleChanged]);
 
   useInput(async (input, key) => {
-    if (
-      input === "-" ||
-      input === "j" ||
-      key.downArrow ||
-      input === "k" ||
-      key.upArrow
-    ) {
-      onBack();
+    if (input === "-" || key.escape) {
+      onBack(exampleId);
+    }
+
+    if (input === "j" || key.downArrow) {
+      // next example
+      let currentIndex = sandbox.examples.findIndex(
+        (e) => e.name === exampleId,
+      );
+      let nestIndex = Math.min(currentIndex + 1, sandbox.examples.length - 1);
+      setExampleId(sandbox.examples[nestIndex]?.name);
+    }
+
+    if (input === "k" || key.upArrow) {
+      // previous example
+      let currentIndex = sandbox.examples.findIndex(
+        (e) => e.name === exampleId,
+      );
+      let nestIndex = Math.max(currentIndex - 1, 0);
+      setExampleId(sandbox.examples[nestIndex]?.name);
     }
   });
 
@@ -169,7 +182,11 @@ function ExampleDetail({
       { flexDirection: "column" },
       h(Text, { bold: true }, example.name),
       example.description && h(Text, { color: "gray" }, example.description),
-      h(Text, { color: "gray" }, "Press - to go back, q to quit"),
+      h(
+        Text,
+        { color: "gray" },
+        "Press - to go back, j/k to navigate, q to quit",
+      ),
     ),
     h(Text, {}, example.value),
   );
@@ -244,11 +261,11 @@ export default function App({ initialSandboxes, pattern, watch }) {
             ),
           );
         },
-        onBack: () => {
+        onBack: (exampleId) => {
           setCurrentScreen({
             type: "examples",
             selectedSandboxId: currentScreen.selectedSandboxId,
-            selectedExampleId: currentScreen.selectedExampleId,
+            selectedExampleId: exampleId,
           });
         },
       });

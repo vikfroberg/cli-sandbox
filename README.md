@@ -1,13 +1,6 @@
 # CLI Sandbox
 
-A React/Ink-based terminal application for testing and viewing CLI patterns and examples.
-
-## Features
-
-- 🎮 **Interactive Navigation** - Browse sandbox files and examples with keyboard navigation
-- 🔄 **Live Reload** - Automatically updates when you edit sandbox files (with `--watch`)
-- 📁 **Multiple Sandboxes** - Switch between different example categories
-- ⌨️ **Simple Controls** - Easy navigation with j/k keys and arrow keys
+A terminal application for visually testing CLIs.
 
 ## Quick Start
 
@@ -41,15 +34,7 @@ export default [
 ];
 ```
 
-## Navigation
-
-- **j/↓** - Move down
-- **k/↑** - Move up
-- **Enter** - Select item
-- **-** - Go back
-- **q** - Quit
-
-## Usage
+# Advanced usage
 
 ```bash
 # Run with file watching
