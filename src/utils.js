@@ -104,7 +104,10 @@ export function cleanupBundles() {
 }
 
 export async function loadSandboxes(pattern) {
-  const files = await glob(pattern, { cwd: process.cwd() });
+  const files = await glob(pattern, {
+    cwd: process.cwd(),
+    ignore: ["**/node_modules/**", "**/.*/**"], // Exclude node_modules and hidden directories
+  });
   const sandboxes = [];
 
   for (const file of files) {
